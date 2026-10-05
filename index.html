@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Choreia パイプライン</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@700;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#faf8f5; --panel:#f5ece5; --panel2:#f1eae2; --card:#ffffff;
+  --ink:#2c2418; --sub:#5a5044; --muted:#8a7e6e;
+  --line:#e8e0d8; --line2:#d4cdc2;
+  --accent:#a0522d; --accent-deep:#7a3d22; --accent-soft:#f3e2d6;
+  --ok:#4a7040; --ok-soft:#e6efe2; --warn:#a8842c; --warn-soft:#f5ecd4;
+  --bad:#a04034; --bad-soft:#f5ded9; --info:#3d5a80; --info-soft:#e2e9f2;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Noto Sans JP",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14.5px;line-height:1.7}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.84em}
+a{color:var(--accent-deep)}
+header.app{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 22px 0;max-width:1140px;margin:0 auto}
+.brand{font-family:"Zen Kaku Gothic New",sans-serif;font-weight:900;font-size:1.25rem;letter-spacing:.02em}
+.brand small{color:var(--accent);font-weight:700;margin-left:6px}
+.spacer{flex:1}
+#user-area{display:flex;align-items:center;gap:10px}
+#user-avatar{width:28px;height:28px;border-radius:50%;display:none}
+#user-name{font-size:.85rem;color:var(--sub)}
+nav.tabs{display:flex;gap:4px;max-width:1140px;margin:14px auto 0;padding:0 22px;border-bottom:1.5px solid var(--line);flex-wrap:wrap}
+nav.tabs button{appearance:none;background:none;border:none;cursor:pointer;font-family:inherit;font-size:.92rem;font-weight:700;color:var(--muted);padding:9px 16px 11px;border-bottom:2.5px solid transparent;margin-bottom:-1.5px}
+nav.tabs button:hover{color:var(--sub)}
+nav.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:6px}
+nav.tabs button.on{color:var(--accent-deep);border-bottom-color:var(--accent)}
+main{max-width:1140px;margin:0 auto;padding:20px 22px 80px}
+section.view{display:none}
+section.view.on{display:block}
+h2{font-family:"Zen Kaku Gothic New",sans-serif;font-size:1.1rem;font-weight:700;margin:0 0 4px}
+.viewdesc{color:var(--muted);font-size:.82rem;margin:0 0 16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.kpi .n{font-family:"Zen Kaku Gothic New",sans-serif;font-size:1.7rem;font-weight:900;line-height:1.2;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:.76rem;color:var(--muted)}
+.kpi.warm .n{color:var(--warn)}
+.kpi.hot .n{color:var(--accent)}
+.kpi.click{cursor:pointer}
+.kpi.click:hover{border-color:var(--accent)}
+.filter-chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent-deep);font-size:.78rem;font-weight:700;border-radius:999px;padding:2px 12px;cursor:pointer}
+.pill{display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;padding:1px 10px;white-space:nowrap}
+.p-acc{background:var(--accent-soft);color:var(--accent-deep)}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-info{background:var(--info-soft);color:var(--info)}
+.p-mut{background:var(--panel2);color:var(--muted)}
+.tbox{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:680px;font-size:.87rem}
+th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:var(--panel);font-size:.75rem;color:var(--sub);white-space:nowrap;font-weight:700}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--panel2)}
+td .sub{display:block;font-size:.76rem;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.bar{display:flex;gap:10px;align-items:center;margin:0 0 12px;flex-wrap:wrap}
+.bar input[type=search]{flex:1;min-width:180px;max-width:320px;font-family:inherit;font-size:.88rem;padding:7px 12px;border:1px solid var(--line2);border-radius:9px;background:var(--card);color:var(--ink)}
+.btn{appearance:none;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;background:var(--accent);color:#fff;border-radius:9px;padding:7px 16px}
+.btn.ghost{background:var(--panel);color:var(--accent-deep);border:1px solid var(--line2)}
+.btn.small{font-size:.78rem;padding:4px 12px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(185px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;min-width:185px}
+.col h3{margin:2px 4px 10px;font-size:.8rem;font-weight:700;color:var(--sub);display:flex;justify-content:space-between;align-items:center}
+.col h3 .cnt{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--muted)}
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:pointer}
+.tcard:hover{border-color:var(--accent)}
+.tcard b{font-size:.86rem;display:block}
+.tcard .who{font-size:.76rem;color:var(--sub)}
+.tcard .ids{font-family:"IBM Plex Mono",monospace;font-size:.66rem;color:var(--muted);display:block;margin-top:4px}
+.tcard .flag{margin-top:6px}
+.detail{margin-top:20px;background:var(--card);border:1.5px solid var(--accent);border-radius:12px;padding:18px 20px}
+.detail h3{margin:0 0 2px;font-family:"Zen Kaku Gothic New",sans-serif;font-size:1rem}
+.detail .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 22px;margin-top:10px}
+.kv{font-size:.85rem;padding:5px 0;border-bottom:1px dashed var(--line)}
+.kv b{display:block;font-size:.7rem;color:var(--muted);font-weight:700}
+.lock{color:var(--muted)}
+.lock::before{content:"🔒 "}
+.timeline{margin:14px 0 0;padding:0;list-style:none;font-size:.84rem}
+.timeline li{padding:4px 0 4px 18px;position:relative;color:var(--sub)}
+.timeline li::before{content:"";position:absolute;left:4px;top:12px;width:7px;height:7px;border-radius:50%;background:var(--line2)}
+.timeline li.now::before{background:var(--accent)}
+.summarybox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:12px;font-size:.85rem;white-space:pre-wrap;max-height:300px;overflow-y:auto}
+footer{max-width:1140px;margin:0 auto;padding:18px 22px;color:var(--muted);font-size:.76rem;border-top:1px solid var(--line)}
+/* welcome / setup */
+.center{max-width:560px;margin:60px auto;text-align:center;padding:0 22px}
+.center h1{font-family:"Zen Kaku Gothic New",sans-serif;font-weight:900;font-size:1.7rem}
+.center p{color:var(--sub)}
+.setupbox{max-width:640px;margin:30px auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 28px}
+.setupbox h2{margin-bottom:10px}
+.drive-list,.folder-list-setup{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;margin:10px 0}
+.drive-item,.folder-item-setup{display:flex;gap:8px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:9px;cursor:pointer;background:var(--paper)}
+.drive-item.selected,.folder-item-setup.selected{border-color:var(--accent);background:var(--accent-soft)}
+.spinner{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation-duration:2s}}
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(44,36,24,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50}
+.modal-bg.on{display:flex}
+.modal{background:var(--card);border-radius:14px;max-width:640px;width:100%;padding:22px 26px;border:1px solid var(--line)}
+.modal h3{font-family:"Zen Kaku Gothic New",sans-serif;margin:0 0 14px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+.fgrid .full{grid-column:1/-1}
+@media(max-width:560px){.fgrid{grid-template-columns:1fr}}
+label.f{display:block;font-size:.74rem;font-weight:700;color:var(--sub)}
+label.f input,label.f select,label.f textarea{width:100%;font-family:inherit;font-size:.9rem;padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--paper);color:var(--ink);margin-top:2px}
+label.f textarea{min-height:64px;resize:vertical}
+.modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 22px;border-radius:999px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:99}
+.toast.show{opacity:1}
+.hint{font-size:.76rem;color:var(--muted)}
+/* pipeline */
+table.pipe td{vertical-align:top}
+.deals{display:flex;flex-wrap:wrap;gap:8px}
+.dcard{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;min-width:120px;font-size:.8rem;display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+table.pipe td.nw{white-space:nowrap}
+.dcard:hover{border-color:var(--accent)}
+.dcard b{font-size:.8rem}
+.dcard.stale{border-color:var(--warn);background:var(--warn-soft)}
+.dcard.add{color:var(--muted);border-style:dashed;justify-content:center;align-items:center;min-width:80px}
+.fchip{display:inline-block;font-size:.76rem;font-weight:700;border:1px solid var(--line2);border-radius:999px;padding:1px 10px;margin:0 2px;cursor:pointer;color:var(--sub);background:var(--card)}
+.fchip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <span class="brand">Choreia<small>パイプライン</small></span>
+  <span class="spacer"></span>
+  <div id="auth-out"><button class="btn" onclick="handleSignIn()">Googleでログイン</button></div>
+  <div id="user-area" style="display:none"><img id="user-avatar" alt=""><span id="user-name"></span><button class="btn ghost small" onclick="reloadData()">↻ 最新にする</button><button class="btn ghost small" id="btn-settings" style="display:none" onclick="openSettings()">⚙ 設定</button><button class="btn ghost small" onclick="handleSignOut()">ログアウト</button></div>
+</header>
+
+<div id="view-welcome" class="center">
+  <h1>Choreia パイプライン</h1>
+  <p>プロダクトごとに、どこへ提案していて、いまどの段階かを一枚で。<br>データは自社のGoogleスプレッドシートに保存されます。</p>
+  <button class="btn" onclick="handleSignIn()">Googleでログイン</button>
+  <p class="hint">組織のGoogleアカウント（@m2-labo.jp 等）でログインしてください。</p>
+</div>
+
+<div id="view-loading" class="center" style="display:none"><div class="spinner"></div><p>読み込み中…</p></div>
+
+<div id="view-setup" style="display:none">
+  <div class="setupbox">
+    <h2>初回セットアップ</h2>
+    <p style="font-size:.88rem;color:var(--sub)">データ保存先のスプレッドシートを作成します。保存先の共有ドライブとフォルダを選んでください。（ドメイン: <b id="setup-domain"></b>）</p>
+    <h3 style="font-size:.85rem">1. 共有ドライブ</h3>
+    <div id="setup-drives"></div>
+    <div id="setup-step2" style="display:none">
+      <h3 style="font-size:.85rem">2. フォルダ</h3>
+      <div id="setup-breadcrumb" style="font-size:.8rem;margin-bottom:6px"></div>
+      <div id="setup-folders"></div>
+    </div>
+    <div style="margin-top:16px;text-align:right"><button class="btn" id="setup-confirm-btn" disabled onclick="confirmSetup()">選択してください</button></div>
+  </div>
+</div>
+
+<div id="view-main" style="display:none">
+<nav class="tabs">
+  <button class="on" data-v="pipe" onclick="switchTab('pipe')">パイプライン</button>
+  <button data-v="phase" onclick="switchTab('phase')">フェーズ集計</button>
+  <button data-v="products" onclick="switchTab('products')">プロダクト</button>
+  <button data-v="logs" onclick="switchTab('logs')">訪問記録</button>
+</nav>
+<main>
+  <section class="view on" id="v-pipe">
+    <h2>パイプライン</h2>
+    <p class="viewdesc">プロダクトごとに、提案先とフェーズを横に並べています。案件をクリックすると編集できます。30日以上更新のない案件は黄色です。</p>
+    <div class="kpis" id="pipe-kpis"></div>
+    <div class="bar"><input type="search" id="q-pipe" placeholder="プロダクト名・提案先で検索" oninput="renderPipeline()"><span class="spacer"></span><button class="btn" onclick="openProductForm()">＋ プロダクト</button></div>
+    <div class="bar" id="pipe-filters"></div>
+    <div class="tbox" id="t-pipe"></div>
+  </section>
+  <section class="view" id="v-phase">
+    <h2>フェーズ集計</h2>
+    <p class="viewdesc">プロダクトごとの案件数をフェーズ別に数えています。月1回の定例はこの表から始めます。</p>
+    <div class="tbox" id="t-phase"></div>
+    <h3 style="font-size:.9rem;margin-top:20px">フェーズの意味</h3>
+    <div id="phase-legend"></div>
+  </section>
+  <section class="view" id="v-products">
+    <h2>プロダクト</h2>
+    <p class="viewdesc">種類は「プロダクト（営業がそのまま持って売れる）」か「個別開発（その会社のために作る）」か。誰が売るかは「安河内で完結／VB営業／M2営業」。</p>
+    <div class="bar"><span class="spacer"></span><button class="btn" onclick="openProductForm()">＋ プロダクト</button></div>
+    <div class="tbox" id="t-products"></div>
+  </section>
+  <section class="view" id="v-logs">
+    <h2>訪問記録</h2>
+    <p class="viewdesc">訪問のたびに手でメモを書くのではなく、その場で録ったボイスメモや Google Meet の議事録のリンクを残します。</p>
+    <div class="bar"><span class="spacer"></span><button class="btn" onclick="openLogForm()">＋ 訪問記録</button></div>
+    <div class="tbox" id="t-logs"></div>
+  </section>
+</main>
+</div>
+
+<footer>Choreia パイプライン ─ データは自社スプレッドシートに保存。M2Labo システム販売</footer>
+
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer onload="initGIS()"></script>
+<script>
+// ==================== Config ====================
+var CLIENT_ID='595564106580-hsrunbvfacmr23d2jopl462taqilip75.apps.googleusercontent.com';
+var SCOPES='https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
+var CONFIG_FILENAME='choreia-pipeline-config.json';
+var TOKEN_KEY='choreia_pipeline_token';
+var CONFIG_CACHE_KEY='choreia_pipeline_config_cache';
+var BLOCKED_DOMAINS=['gmail.com','googlemail.com','yahoo.co.jp','yahoo.com','hotmail.com','outlook.com','outlook.jp','icloud.com','me.com','mac.com','aol.com','protonmail.com','zoho.com','live.com','live.jp','msn.com','nifty.com','biglobe.ne.jp','ocn.ne.jp'];
+
+// 2026-10-05 システム販売関連MTG(石井・梅林・山﨑・安河内)で決めた形:
+//  プロダクトごとの行の右に案件を横に並べ、案件ごとのフェーズが見えるようにする。
+//  誰が売るか(安河内で完結/VB営業/M2営業)と、プロダクトか個別開発かを分けて持つ。
+var PRODUCT_FIELDS=['id','name','summary','kind','seller','devOwner','initialFee','monthlyFee','feeUnit','nextAction','due','memo','order','createdAt','updatedAt'];
+var DEAL_FIELDS=['id','productId','customer','phase','amountNote','owner','nextAction','due','memo','history','createdAt','updatedAt'];
+var LOG_FIELDS=['id','date','productId','dealId','who','summary','link','createdAt','updatedAt'];
+var SHEET_DEFS=[
+  {title:'プロダクト',fields:PRODUCT_FIELDS,headers:['ID','プロダクト名','内容（概要）','種類','誰が売るか','開発担当','初期費用（円）','月額（円）','月額の単位','次にやること','期限','メモ','並び順','登録日','更新日']},
+  {title:'案件',fields:DEAL_FIELDS,headers:['ID','プロダクトID','提案先','フェーズ','金額メモ','営業担当','次にやること','期限','メモ','履歴','登録日','更新日']},
+  {title:'訪問記録',fields:LOG_FIELDS,headers:['ID','日付','プロダクトID','案件ID','記録した人','内容（要約）','録音・議事録のリンク','登録日','更新日']}
+];
+var PHASES=['構想','提案予定','提案中','試験導入','受注','運用中','失注'];
+var PHASE_DESC={'構想':'アイデアの段階。提案先はまだ無い','提案予定':'提案先は決まっていて、まだ話していない','提案中':'提案した。返事待ち・条件調整中','試験導入':'無料お試し・実証で使ってもらっている','受注':'契約済み・発注をもらった','運用中':'本番で使われ、保守・月額をもらっている','失注':'断られた・採択されなかった'};
+var PHASE_PILL={'構想':'p-mut','提案予定':'p-info','提案中':'p-acc','試験導入':'p-warn','受注':'p-ok','運用中':'p-ok','失注':'p-bad'};
+var KINDS=['プロダクト','個別開発'];
+var SELLERS=['安河内で完結','VB営業','M2営業'];
+var STALE_DAYS=30;
+
+// ==================== State ====================
+var tokenClient=null,accessToken=null;
+var currentUser={email:'',name:'',domain:'',photo:''};
+var orgConfig=null;
+var products=[],deals=[],logs=[];
+var setupDriveId='',setupDriveName='',setupFolderId='',setupFolderName='',setupFolderPath=[];
+var filterSeller='',filterKind='',hideLost=false;
+
+function isAdmin(){if(!orgConfig)return false;return (orgConfig.admins||[orgConfig.admin]).indexOf(currentUser.email)!==-1;}
+function money(v){var n=parseInt(String(v||'').replace(/[^\d]/g,''),10);return isNaN(n)?'':n.toLocaleString('ja-JP')+'円';}
+function daysSince(s){if(!s)return null;var d=new Date(String(s).replace(' ','T'));if(isNaN(d))return null;return Math.floor((new Date()-d)/86400000);}
+function dealsOf(pid){return deals.filter(function(d){return d.productId===pid;}).sort(function(a,b){return PHASES.indexOf(a.phase)-PHASES.indexOf(b.phase);});}
+function phasePill(p){return '<span class="pill '+(PHASE_PILL[p]||'p-mut')+'">'+escapeHtml(p||'─')+'</span>';}
+function productName(id){var p=byId(products,id);return p?p.name:'';}
+function sortedProducts(){return products.slice().sort(function(a,b){return (parseInt(a.order,10)||999)-(parseInt(b.order,10)||999)||a.id.localeCompare(b.id);});}
+
+// ==================== 設定（管理者のみ） ====================
+function openSettings(){
+  if(!isAdmin()){showToast('設定は管理者のみ変更できます');return;}
+  var ssUrl='https://docs.google.com/spreadsheets/d/'+getSheetId()+'/edit';
+  openModal('<h3>⚙ 設定</h3>'+
+    '<p class="hint">保存先: <a href="'+escapeAttr(ssUrl)+'" target="_blank" rel="noopener">スプレッドシートを開く</a>（'+escapeHtml(orgConfig.driveName||'')+' / '+escapeHtml(orgConfig.folderName||'')+'）</p>'+
+    '<h3 style="font-size:.9rem;margin-top:12px">管理者 <span class="hint" style="font-weight:400">設定の変更ができます。入力は同じドメインの全員ができます</span></h3>'+
+    '<div id="role-admins"></div>'+
+    '<div style="display:flex;gap:8px;margin-top:6px"><input id="add-admins" type="email" placeholder="メールアドレス" style="flex:1;font-family:inherit;font-size:.88rem;padding:6px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--paper);color:var(--ink)"><button class="btn small" onclick="addRole(\'admins\')">追加</button></div>'+
+    (products.length?'':'<h3 style="font-size:.9rem;margin-top:16px">初期データ</h3><p class="hint">共有ドライブに置いた choreia-pipeline-seed.json の内容を入れます。空のときだけ使えます。</p><button class="btn ghost small" onclick="seedInitialData()">初期データを入れる</button>')+
+    '<div class="actions"><button class="btn" onclick="closeModal()">閉じる</button></div>');
+  renderRoleList('admins');
+}
+function renderRoleList(key){
+  var owner=orgConfig.admin;var list=orgConfig[key]||[owner];var h='';
+  list.forEach(function(email){
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:.86rem"><span style="flex:1">'+escapeHtml(email)+'</span>';
+    if(email===owner)h+='<span class="pill p-acc">オーナー</span>';
+    else h+='<button class="btn ghost small" onclick="removeRole(\''+key+'\',\''+escapeAttr(email)+'\')">外す</button>';
+    h+='</div>';
+  });
+  var el=document.getElementById('role-'+key);if(el)el.innerHTML=h;
+}
+async function addRole(key){
+  var input=document.getElementById('add-'+key);var email=(input.value||'').trim().toLowerCase();
+  if(!email||email.indexOf('@')===-1){showToast('メールアドレスを入力してください');return;}
+  var list=orgConfig[key]||[orgConfig.admin];
+  if(list.indexOf(email)!==-1){showToast('すでに登録されています');return;}
+  list.push(email);orgConfig[key]=list;input.value='';renderRoleList(key);await saveConfig();showToast(email+' を追加しました');
+}
+async function removeRole(key,email){
+  if(email===orgConfig.admin){showToast('オーナーは外せません');return;}
+  orgConfig[key]=(orgConfig[key]||[]).filter(function(x){return x!==email;});renderRoleList(key);await saveConfig();showToast(email+' を外しました');
+}
+
+// ==================== Views ====================
+function showView(name){['welcome','loading','setup','main'].forEach(function(v){var el=document.getElementById('view-'+v);if(el)el.style.display=(v===name)?'':'none';});}
+var currentTab='pipe';
+var TABS=['pipe','phase','products','logs'];
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('nav.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.v===tab);});
+  TABS.forEach(function(t){document.getElementById('v-'+t).classList.toggle('on',t===tab);});
+  if(tab==='pipe')renderPipeline();
+  if(tab==='phase')renderPhase();
+  if(tab==='products')renderProducts();
+  if(tab==='logs')renderLogs();
+}
+function showMainView(){
+  showView('main');
+  var sb=document.getElementById('btn-settings');if(sb)sb.style.display=isAdmin()?'':'none';
+  switchTab(currentTab||'pipe');
+}
+async function reloadData(){showToast('読み込み中…');await loadAllData();switchTab(currentTab);showToast('最新にしました');}
+
+// ==================== パイプライン（プロダクト×案件） ====================
+function setFilter(kind,val){if(kind==='seller')filterSeller=(filterSeller===val?'':val);if(kind==='kind')filterKind=(filterKind===val?'':val);renderPipeline();}
+function renderPipeline(){
+  var live=deals.filter(function(d){return d.phase!=='失注';});
+  var won=deals.filter(function(d){return d.phase==='受注'||d.phase==='運用中';});
+  var talking=deals.filter(function(d){return d.phase==='提案中'||d.phase==='試験導入';});
+  var stale=deals.filter(function(d){var n=daysSince(d.updatedAt);return d.phase!=='失注'&&d.phase!=='運用中'&&n!==null&&n>=STALE_DAYS;});
+  document.getElementById('pipe-kpis').innerHTML=
+    '<div class="kpi"><div class="n">'+products.length+'</div><div class="l">プロダクト</div></div>'+
+    '<div class="kpi"><div class="n">'+live.length+'</div><div class="l">動いている案件（失注を除く）</div></div>'+
+    '<div class="kpi hot"><div class="n">'+talking.length+'</div><div class="l">提案中・試験導入</div></div>'+
+    '<div class="kpi"><div class="n">'+won.length+'</div><div class="l">受注・運用中</div></div>'+
+    '<div class="kpi warm"><div class="n">'+stale.length+'</div><div class="l">'+STALE_DAYS+'日以上更新なし</div></div>';
+  var chips='<span class="hint">誰が売るか:</span> ';
+  SELLERS.forEach(function(s){chips+='<span class="fchip'+(filterSeller===s?' on':'')+'" onclick="setFilter(\'seller\',\''+s+'\')">'+s+'</span>';});
+  chips+=' <span class="hint" style="margin-left:10px">種類:</span> ';
+  KINDS.forEach(function(s){chips+='<span class="fchip'+(filterKind===s?' on':'')+'" onclick="setFilter(\'kind\',\''+s+'\')">'+s+'</span>';});
+  chips+=' <label class="hint" style="margin-left:10px;cursor:pointer"><input type="checkbox" '+(hideLost?'checked':'')+' onchange="hideLost=this.checked;renderPipeline()"> 失注を隠す</label>';
+  document.getElementById('pipe-filters').innerHTML=chips;
+  var q=(document.getElementById('q-pipe').value||'').trim().toLowerCase();
+  var list=sortedProducts().filter(function(p){
+    if(filterSeller&&p.seller!==filterSeller)return false;
+    if(filterKind&&p.kind!==filterKind)return false;
+    if(q){var hay=(p.name+' '+p.summary+' '+dealsOf(p.id).map(function(d){return d.customer;}).join(' ')).toLowerCase();if(hay.indexOf(q)===-1)return false;}
+    return true;
+  });
+  if(!products.length){document.getElementById('t-pipe').innerHTML='<p class="hint" style="padding:16px">まだプロダクトがありません。「＋ プロダクト」から登録するか、管理者は ⚙ 設定 から初期データを入れられます。</p>';return;}
+  var h='<table class="pipe"><thead><tr><th style="min-width:190px">プロダクト</th><th>種類</th><th>誰が売るか</th><th>価格</th><th style="min-width:420px">案件（提案先とフェーズ） →</th></tr></thead><tbody>';
+  list.forEach(function(p){
+    var ds=dealsOf(p.id).filter(function(d){return !(hideLost&&d.phase==='失注');});
+    var price=[];if(p.initialFee)price.push('初期 '+money(p.initialFee));if(p.monthlyFee)price.push('月 '+money(p.monthlyFee)+(p.feeUnit?' / '+escapeHtml(p.feeUnit):''));
+    h+='<tr><td onclick="openProductForm(\''+p.id+'\')"><b>'+escapeHtml(p.name)+'</b><span class="sub">'+escapeHtml(p.summary)+'</span>'+(p.nextAction?'<span class="sub">▶ '+escapeHtml(p.nextAction)+(p.due?'（'+escapeHtml(p.due)+'）':'')+'</span>':'')+'</td>'+
+       '<td class="nw">'+escapeHtml(p.kind||'')+'</td><td class="nw">'+escapeHtml(p.seller||'')+'</td><td class="num nw" style="font-size:.78rem">'+price.join('<br>')+'</td><td><div class="deals">';
+    ds.forEach(function(d){
+      var n=daysSince(d.updatedAt),st=(d.phase!=='失注'&&d.phase!=='運用中'&&n!==null&&n>=STALE_DAYS);
+      h+='<div class="dcard'+(st?' stale':'')+'" onclick="openDealForm(\''+d.id+'\')" title="'+escapeAttr((d.nextAction||'')+(st?'（'+n+'日更新なし）':''))+'"><b>'+escapeHtml(d.customer)+'</b>'+phasePill(d.phase)+'</div>';
+    });
+    h+='<div class="dcard add" onclick="openDealForm(\'\',\''+p.id+'\')">＋ 案件</div></div></td></tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('t-pipe').innerHTML=h;
+}
+
+// ==================== フェーズ集計 ====================
+function renderPhase(){
+  var h='<table><thead><tr><th>プロダクト</th>';PHASES.forEach(function(ph){h+='<th class="num" title="'+escapeAttr(PHASE_DESC[ph])+'">'+ph+'</th>';});h+='<th class="num">合計</th></tr></thead><tbody>';
+  var tot={};PHASES.forEach(function(ph){tot[ph]=0;});
+  sortedProducts().forEach(function(p){
+    var ds=dealsOf(p.id),sum=0;h+='<tr onclick="openProductForm(\''+p.id+'\')"><td>'+escapeHtml(p.name)+'</td>';
+    PHASES.forEach(function(ph){var c=ds.filter(function(d){return d.phase===ph;}).length;tot[ph]+=c;sum+=c;h+='<td class="num">'+(c||'')+'</td>';});
+    h+='<td class="num"><b>'+sum+'</b></td></tr>';
+  });
+  var all=0;h+='<tr style="background:var(--panel)"><td><b>合計</b></td>';PHASES.forEach(function(ph){all+=tot[ph];h+='<td class="num"><b>'+tot[ph]+'</b></td>';});h+='<td class="num"><b>'+all+'</b></td></tr></tbody></table>';
+  document.getElementById('t-phase').innerHTML=h;
+  var g='';PHASES.forEach(function(ph){g+='<div class="kv"><b>'+phasePill(ph)+'</b>'+escapeHtml(PHASE_DESC[ph])+'</div>';});
+  document.getElementById('phase-legend').innerHTML=g;
+}
+
+// ==================== プロダクト ====================
+function renderProducts(){
+  var h='<table><thead><tr><th>#</th><th>プロダクト</th><th>種類</th><th>誰が売るか</th><th>開発担当</th><th>初期費用</th><th>月額</th><th>案件数</th><th>更新</th></tr></thead><tbody>';
+  sortedProducts().forEach(function(p){
+    h+='<tr onclick="openProductForm(\''+p.id+'\')"><td class="num">'+escapeHtml(p.order||'')+'</td><td><b>'+escapeHtml(p.name)+'</b><span class="sub">'+escapeHtml(p.summary)+'</span></td><td>'+escapeHtml(p.kind)+'</td><td>'+escapeHtml(p.seller)+'</td><td>'+escapeHtml(p.devOwner)+'</td><td class="num">'+money(p.initialFee)+'</td><td class="num">'+money(p.monthlyFee)+(p.feeUnit?'<span class="sub">'+escapeHtml(p.feeUnit)+'</span>':'')+'</td><td class="num">'+dealsOf(p.id).length+'</td><td class="num" style="font-size:.76rem">'+escapeHtml((p.updatedAt||'').slice(0,10))+'</td></tr>';
+  });
+  document.getElementById('t-products').innerHTML=h+'</tbody></table>';
+}
+function openProductForm(id){
+  var p=id?byId(products,id):{kind:'プロダクト',seller:'M2営業'};
+  openModal('<h3>'+(id?'プロダクトを編集':'プロダクトを登録')+'</h3><div class="fgrid">'+
+    inp('p-name','プロダクト名',p.name,'text',true)+ta('p-summary','内容（概要）',p.summary)+
+    sel('p-kind','種類（営業がそのまま売れるか）',p.kind,KINDS)+sel('p-seller','誰が売るか',p.seller,SELLERS)+
+    inp('p-dev','開発担当',p.devOwner)+inp('p-order','並び順（数字）',p.order,'number')+
+    inp('p-init','初期費用（円）',p.initialFee,'number')+inp('p-month','月額（円）',p.monthlyFee,'number')+
+    inp('p-unit','月額の単位（1店舗・1社など）',p.feeUnit)+inp('p-due','期限',p.due,'date')+
+    inp('p-next','次にやること',p.nextAction,'text',true)+ta('p-memo','メモ',p.memo)+
+    '</div><div class="actions">'+(id?'<button class="btn ghost" onclick="openDealForm(\'\',\''+id+'\')">＋ 案件を追加</button>':'')+'<button class="btn ghost" onclick="closeModal()">閉じる</button><button class="btn" onclick="saveProduct(\''+(id||'')+'\')">保存</button></div>');
+}
+async function saveProduct(id){
+  var name=fv('p-name');if(!name){showToast('プロダクト名を入れてください');return;}
+  var p=id?Object.assign({},byId(products,id)):{id:nextId('PRD',products),createdAt:nowStr()};
+  p.name=name;p.summary=fv('p-summary');p.kind=fv('p-kind');p.seller=fv('p-seller');p.devOwner=fv('p-dev');p.order=fv('p-order');
+  p.initialFee=fv('p-init');p.monthlyFee=fv('p-month');p.feeUnit=fv('p-unit');p.due=fv('p-due');p.nextAction=fv('p-next');p.memo=fv('p-memo');
+  try{await saveEntity('プロダクト',products,p,PRODUCT_FIELDS);closeModal();showToast('保存しました');switchTab(currentTab);}catch(e){showToast('保存に失敗しました: '+e.message);}
+}
+
+// ==================== 案件 ====================
+function openDealForm(id,productId){
+  var d=id?byId(deals,id):{productId:productId,phase:'提案予定'};
+  var opts=sortedProducts().map(function(p){return '<option value="'+p.id+'"'+(p.id===d.productId?' selected':'')+'>'+escapeHtml(p.name)+'</option>';}).join('');
+  var hist=getHistory(d).slice().reverse().map(function(x,i){return '<li'+(i===0?' class="now"':'')+'>'+escapeHtml(x.t)+'　'+escapeHtml(x.e)+'</li>';}).join('');
+  var relLogs=id?logs.filter(function(l){return l.dealId===id;}):[];
+  openModal('<h3>'+(id?'案件を編集':'案件を追加')+'</h3><div class="fgrid">'+
+    '<label class="f" style="grid-column:1/-1">プロダクト<select id="d-product">'+opts+'</select></label>'+
+    inp('d-customer','提案先',d.customer)+sel('d-phase','フェーズ',d.phase,PHASES)+
+    inp('d-owner','営業担当',d.owner)+inp('d-amount','金額メモ（見積・契約額など）',d.amountNote)+
+    inp('d-next','次にやること',d.nextAction,'text',true)+inp('d-due','期限',d.due,'date')+ta('d-memo','メモ',d.memo)+
+    '</div>'+(hist?'<h3 style="font-size:.85rem;margin-top:14px">フェーズの履歴</h3><ul class="timeline">'+hist+'</ul>':'')+
+    (relLogs.length?'<h3 style="font-size:.85rem;margin-top:14px">訪問記録</h3>'+relLogs.map(function(l){return '<div class="kv"><b>'+escapeHtml(l.date)+' '+escapeHtml(l.who)+'</b>'+escapeHtml(l.summary)+'</div>';}).join(''):'')+
+    '<div class="actions">'+(id?'<button class="btn ghost" onclick="openLogForm(\'\',\''+id+'\')">＋ 訪問記録</button>':'')+'<button class="btn ghost" onclick="closeModal()">閉じる</button><button class="btn" onclick="saveDeal(\''+(id||'')+'\')">保存</button></div>');
+}
+async function saveDeal(id){
+  var customer=fv('d-customer');if(!customer){showToast('提案先を入れてください');return;}
+  var d=id?Object.assign({},byId(deals,id)):{id:nextId('DEAL',deals),createdAt:nowStr(),history:'[]'};
+  var before=d.phase;
+  d.productId=fv('d-product');d.customer=customer;d.phase=fv('d-phase');d.owner=fv('d-owner');d.amountNote=fv('d-amount');d.nextAction=fv('d-next');d.due=fv('d-due');d.memo=fv('d-memo');
+  if(!id)pushHistory(d,d.phase+'で登録（'+currentUser.name+'）');
+  else if(before!==d.phase)pushHistory(d,before+' → '+d.phase+'（'+currentUser.name+'）');
+  try{await saveEntity('案件',deals,d,DEAL_FIELDS);closeModal();showToast('保存しました');switchTab(currentTab);}catch(e){showToast('保存に失敗しました: '+e.message);}
+}
+
+// ==================== 訪問記録 ====================
+// 訪問のたびに手でメモを書くのではなく、その場のボイスメモ・Google Meet の議事録をリンクで残す(10/5 MTG)
+function renderLogs(){
+  var list=logs.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  if(!list.length){document.getElementById('t-logs').innerHTML='<p class="hint" style="padding:16px">まだ記録がありません。</p>';return;}
+  var h='<table><thead><tr><th>日付</th><th>プロダクト／案件</th><th>記録した人</th><th>内容</th><th>リンク</th></tr></thead><tbody>';
+  list.forEach(function(l){var d=byId(deals,l.dealId);
+    h+='<tr onclick="openLogForm(\''+l.id+'\')"><td class="num">'+escapeHtml(l.date)+'</td><td>'+escapeHtml(productName(l.productId))+(d?'<span class="sub">'+escapeHtml(d.customer)+'</span>':'')+'</td><td>'+escapeHtml(l.who)+'</td><td style="white-space:pre-wrap">'+escapeHtml(l.summary)+'</td><td>'+(l.link?'<a href="'+escapeAttr(l.link)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">開く</a>':'')+'</td></tr>';});
+  document.getElementById('t-logs').innerHTML=h+'</tbody></table>';
+}
+function openLogForm(id,dealId){
+  var l=id?byId(logs,id):{date:todayStr(),who:currentUser.name,dealId:dealId||''};
+  if(!id&&dealId){var dd=byId(deals,dealId);if(dd)l.productId=dd.productId;}
+  var popts='<option value=""></option>'+sortedProducts().map(function(p){return '<option value="'+p.id+'"'+(p.id===l.productId?' selected':'')+'>'+escapeHtml(p.name)+'</option>';}).join('');
+  var dopts='<option value=""></option>'+deals.map(function(d){return '<option value="'+d.id+'"'+(d.id===l.dealId?' selected':'')+'>'+escapeHtml(productName(d.productId)+' / '+d.customer)+'</option>';}).join('');
+  openModal('<h3>'+(id?'訪問記録を編集':'訪問記録を追加')+'</h3><div class="fgrid">'+
+    inp('l-date','日付',l.date,'date')+inp('l-who','記録した人',l.who)+
+    '<label class="f">プロダクト<select id="l-product">'+popts+'</select></label><label class="f">案件<select id="l-deal">'+dopts+'</select></label>'+
+    ta('l-summary','内容（要約）',l.summary)+inp('l-link','録音・議事録のリンク（ボイスメモ、Google Meet の議事録など）',l.link,'url',true)+
+    '</div><div class="actions"><button class="btn ghost" onclick="closeModal()">閉じる</button><button class="btn" onclick="saveLog(\''+(id||'')+'\')">保存</button></div>');
+}
+async function saveLog(id){
+  var l=id?Object.assign({},byId(logs,id)):{id:nextId('LOG',logs),createdAt:nowStr()};
+  l.date=fv('l-date');l.who=fv('l-who');l.productId=fv('l-product');l.dealId=fv('l-deal');l.summary=fv('l-summary');l.link=fv('l-link');
+  if(!l.summary&&!l.link){showToast('内容かリンクを入れてください');return;}
+  try{await saveEntity('訪問記録',logs,l,LOG_FIELDS);closeModal();showToast('保存しました');switchTab(currentTab);}catch(e){showToast('保存に失敗しました: '+e.message);}
+}
+
+// ==================== 初期データ（10/5 MTG・プロダクト一覧 9/14） ====================
+// 初期データは公開リポジトリに置かない(取引先名・金額を含むため)。
+// 保存先の共有ドライブに置いた choreia-pipeline-seed.json を読み込む。
+var SEED_FILENAME='choreia-pipeline-seed.json';
+async function seedInitialData(){
+  if(products.length){showToast('すでにデータがあります');return;}
+  var seed=null;
+  try{
+    var data=await apiFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent("name='"+SEED_FILENAME+"' and trashed=false")+'&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=files(id,modifiedTime)&orderBy=modifiedTime desc');
+    if(data.files&&data.files.length)seed=await apiFetch('https://www.googleapis.com/drive/v3/files/'+data.files[0].id+'?alt=media&supportsAllDrives=true');
+  }catch(e){console.error(e);}
+  if(!seed||!seed.length){showToast(SEED_FILENAME+' が見つかりません');return;}
+  if(!confirm('初期データ（プロダクト'+seed.length+'件と案件）を入れます。よろしいですか。'))return;
+  var now=nowStr(),pRows=[],dRows=[],dn=0;
+  seed.forEach(function(s,i){
+    var pid='PRD-'+String(i+1).padStart(5,'0');
+    var p={id:pid,name:s.name,summary:s.summary||'',kind:s.kind||'',seller:s.seller||'',devOwner:s.devOwner||'',initialFee:s.initialFee||'',monthlyFee:s.monthlyFee||'',feeUnit:s.feeUnit||'',nextAction:s.nextAction||'',due:s.due||'',memo:s.memo||'',order:String(i+1),createdAt:now,updatedAt:now};
+    products.push(p);pRows.push(toRow(p,PRODUCT_FIELDS));
+    (s.deals||[]).forEach(function(c){dn++;var d={id:'DEAL-'+String(dn).padStart(5,'0'),productId:pid,customer:c[0],phase:c[1],amountNote:'',owner:'',nextAction:'',due:'',memo:'',history:JSON.stringify([{t:now,e:c[1]+'で登録（初期データ）'}]),createdAt:now,updatedAt:now};deals.push(d);dRows.push(toRow(d,DEAL_FIELDS));});
+  });
+  try{
+    await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+getSheetId()+'/values:batchUpdate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valueInputOption:'RAW',data:[{range:'プロダクト!A2',values:pRows},{range:'案件!A2',values:dRows}]})});
+    closeModal();showToast('初期データを入れました');switchTab('pipe');
+  }catch(e){products=[];deals=[];showToast('失敗しました: '+e.message);}
+}
+
+// ==================== Utility ====================
+function escapeHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escapeAttr(s){return String(s==null?'':s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function showToast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},3200);}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function nowStr(){var d=new Date(),p=function(n){return String(n).padStart(2,'0')};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}
+function fmtDT(s){if(!s)return '';var d=new Date(s);if(isNaN(d))return s;var p=function(n){return String(n).padStart(2,'0')};return d.getFullYear()+'/'+p(d.getMonth()+1)+'/'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}
+function daysLeft(dateStr){if(!dateStr)return null;var d=new Date(dateStr+'T00:00:00');if(isNaN(d))return null;return Math.ceil((d-new Date())/86400000);}
+function nextId(prefix,arr){var mx=0;arr.forEach(function(x){var m=String(x.id||'').match(new RegExp('^'+prefix+'-(\\d+)$'));if(m)mx=Math.max(mx,parseInt(m[1],10));});return prefix+'-'+String(mx+1).padStart(5,'0');}
+function byId(arr,id){for(var i=0;i<arr.length;i++)if(arr[i].id===id)return arr[i];return null;}
+function idxOf(arr,id){for(var i=0;i<arr.length;i++)if(arr[i].id===id)return i;return -1;}
+function pushHistory(app,text){var h=[];try{h=JSON.parse(app.history||'[]');}catch(e){}h.push({t:nowStr(),e:text});app.history=JSON.stringify(h);}
+function getHistory(app){try{return JSON.parse(app.history||'[]');}catch(e){return [];}}
+
+var _tokenRefreshResolver=null,_pendingTokenRefresh=null;
+function refreshAccessToken(){
+  if(_pendingTokenRefresh)return _pendingTokenRefresh;
+  if(!tokenClient)return Promise.reject(new Error('Auth not initialized'));
+  _pendingTokenRefresh=new Promise(function(resolve,reject){
+    _tokenRefreshResolver={resolve:resolve,reject:reject};
+    try{tokenClient.requestAccessToken({prompt:''});}catch(e){_tokenRefreshResolver=null;reject(e);}
+  });
+  _pendingTokenRefresh.catch(function(){}).then(function(){_pendingTokenRefresh=null;});
+  return _pendingTokenRefresh;
+}
+async function authFetch(url,opts){
+  opts=opts||{};opts.headers=opts.headers||{};
+  opts.headers['Authorization']='Bearer '+accessToken;
+  var r=await fetch(url,opts);
+  if(r.status===401){
+    try{await refreshAccessToken();}catch(e){return r;}
+    opts.headers['Authorization']='Bearer '+accessToken;
+    r=await fetch(url,opts);
+  }
+  return r;
+}
+async function apiFetch(url,opts){
+  var r=await authFetch(url,opts);
+  if(!r.ok){var txt='';try{txt=JSON.stringify(await r.json())}catch(e){}throw new Error('API '+r.status+' '+txt);}
+  return r.json();
+}
+
+// ==================== Auth ====================
+function initGIS(){
+  tokenClient=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:onTokenResponse,prompt:''});
+  var saved=localStorage.getItem(TOKEN_KEY);
+  if(saved){accessToken=saved;restoreSession();}
+}
+async function restoreSession(){
+  showView('loading');
+  try{
+    var about=await apiFetch('https://www.googleapis.com/drive/v3/about?fields=user');
+    setUser(about.user);
+    if(BLOCKED_DOMAINS.indexOf(currentUser.domain)!==-1){accessToken=null;localStorage.removeItem(TOKEN_KEY);showView('welcome');return;}
+    showLoggedIn();await findConfig();
+  }catch(e){
+    accessToken=null;localStorage.removeItem(TOKEN_KEY);
+    try{tokenClient.requestAccessToken({prompt:''});}catch(e2){showView('welcome');}
+  }
+}
+async function onTokenResponse(resp){
+  if(_tokenRefreshResolver){
+    var r=_tokenRefreshResolver;_tokenRefreshResolver=null;
+    if(resp.error){r.reject(new Error(resp.error));return;}
+    accessToken=resp.access_token;localStorage.setItem(TOKEN_KEY,accessToken);
+    r.resolve(accessToken);return;
+  }
+  if(resp.error){showToast('ログインに失敗しました');return;}
+  accessToken=resp.access_token;localStorage.setItem(TOKEN_KEY,accessToken);
+  showView('loading');
+  try{
+    var about=await apiFetch('https://www.googleapis.com/drive/v3/about?fields=user');
+    setUser(about.user);
+    if(BLOCKED_DOMAINS.indexOf(currentUser.domain)!==-1){showToast('組織アカウントでログインしてください');handleSignOut();return;}
+    showLoggedIn();await findConfig();
+  }catch(e){showToast('ログインに問題がありました');showView('welcome');}
+}
+function setUser(u){currentUser.email=u.emailAddress||'';currentUser.name=u.displayName||currentUser.email;currentUser.domain=currentUser.email.split('@')[1]||'';currentUser.photo=u.photoLink||'';}
+function showLoggedIn(){
+  document.getElementById('user-name').textContent=currentUser.name;
+  var av=document.getElementById('user-avatar');
+  if(currentUser.photo){av.src=currentUser.photo;av.style.display='';}
+  document.getElementById('auth-out').style.display='none';
+  document.getElementById('user-area').style.display='flex';
+}
+function handleSignIn(){if(!tokenClient){showToast('準備中です。少し待ってからもう一度押してください');return;}tokenClient.requestAccessToken({prompt:'consent'});}
+function handleSignOut(){
+  if(accessToken)google.accounts.oauth2.revoke(accessToken);
+  accessToken=null;localStorage.removeItem(TOKEN_KEY);localStorage.removeItem(CONFIG_CACHE_KEY);
+  orgConfig=null;products=[];deals=[];logs=[];
+  document.getElementById('auth-out').style.display='';
+  document.getElementById('user-area').style.display='none';
+  showView('welcome');
+}
+
+// ==================== Config / Setup ====================
+function loadCachedConfig(){try{var raw=localStorage.getItem(CONFIG_CACHE_KEY);if(!raw)return null;var c=JSON.parse(raw);return (c&&c.domain===currentUser.domain)?c:null;}catch(e){return null;}}
+function saveCachedConfig(){try{localStorage.setItem(CONFIG_CACHE_KEY,JSON.stringify(orgConfig));}catch(e){}}
+async function findConfig(){
+  var cached=loadCachedConfig();
+  if(cached){orgConfig=cached;loadAllData().then(showMainView);refreshConfigFromDrive();return;}
+  try{
+    var data=await apiFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent("name='"+CONFIG_FILENAME+"' and trashed=false")+'&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=files(id)');
+    var files=data.files||[];
+    if(files.length){
+      var fetched=await Promise.all(files.map(function(f){
+        return apiFetch('https://www.googleapis.com/drive/v3/files/'+f.id+'?alt=media&supportsAllDrives=true').then(function(c){return {file:f,config:c};},function(){return null;});
+      }));
+      for(var i=0;i<fetched.length;i++){
+        var r=fetched[i];if(!r||!r.config)continue;
+        if(r.config.domain===currentUser.domain){
+          orgConfig=r.config;orgConfig.configFileId=r.file.id;saveCachedConfig();
+          await loadAllData();showMainView();return;
+        }
+      }
+    }
+  }catch(e){console.error('findConfig',e);}
+  showSetup();
+}
+async function refreshConfigFromDrive(){
+  try{
+    var data=await apiFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent("name='"+CONFIG_FILENAME+"' and trashed=false")+'&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=files(id)');
+    for(var i=0;i<(data.files||[]).length;i++){
+      try{var c=await apiFetch('https://www.googleapis.com/drive/v3/files/'+data.files[i].id+'?alt=media&supportsAllDrives=true');
+        if(c.domain===currentUser.domain){orgConfig=c;orgConfig.configFileId=data.files[i].id;saveCachedConfig();return;}
+      }catch(e){}
+    }
+  }catch(e){}
+}
+async function saveConfig(){
+  try{
+    var cfg=Object.assign({},orgConfig);delete cfg.configFileId;
+    var r=await authFetch('https://www.googleapis.com/upload/drive/v3/files/'+orgConfig.configFileId+'?uploadType=media&supportsAllDrives=true',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg,null,2)});
+    if(!r.ok)throw new Error('save failed');
+    saveCachedConfig();
+  }catch(e){showToast('設定の保存に失敗しました');console.error(e);}
+}
+
+function showSetup(){showView('setup');document.getElementById('setup-domain').textContent=currentUser.domain;document.getElementById('setup-step2').style.display='none';loadSharedDrives();}
+async function loadSharedDrives(){
+  var c=document.getElementById('setup-drives');c.innerHTML='<div class="spinner"></div>';
+  try{var d=await apiFetch('https://www.googleapis.com/drive/v3/drives?pageSize=100');var dr=d.drives||[];
+    if(!dr.length){c.innerHTML='<p class="hint">共有ドライブがありません。管理者に作成を依頼してください。</p>';return;}
+    var h='<div class="drive-list">';
+    dr.forEach(function(x){h+='<div class="drive-item" data-id="'+x.id+'" data-name="'+escapeAttr(x.name)+'" onclick="selectDrive(this)">💾 '+escapeHtml(x.name)+'</div>';});
+    c.innerHTML=h+'</div>';
+  }catch(e){c.innerHTML='<p class="hint">読み込めませんでした</p>';}
+}
+function selectDrive(el){
+  document.querySelectorAll('.drive-item').forEach(function(x){x.classList.remove('selected')});
+  el.classList.add('selected');
+  setupDriveId=el.getAttribute('data-id');setupDriveName=el.getAttribute('data-name');
+  setupFolderId=setupDriveId;setupFolderName=setupDriveName;
+  setupFolderPath=[{id:setupDriveId,name:setupDriveName}];
+  document.getElementById('setup-step2').style.display='';
+  loadSetupFolders(setupDriveId);updateSetupBtn();
+}
+async function loadSetupFolders(pid){
+  var c=document.getElementById('setup-folders');c.innerHTML='<div class="spinner"></div>';updateSetupBreadcrumb();
+  try{var d=await apiFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent("'"+pid+"' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false")+'&driveId='+setupDriveId+'&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=files(id,name)&orderBy=name&pageSize=100');
+    var f=d.files||[];
+    if(!f.length){c.innerHTML='<p class="hint" style="padding:8px">サブフォルダなし ─ このフォルダに保存できます</p>';return;}
+    var h='<div class="folder-list-setup">';
+    f.forEach(function(x){h+='<div class="folder-item-setup" data-id="'+x.id+'" data-name="'+escapeAttr(x.name)+'" onclick="selectSetupFolder(this)">📁 <span style="flex:1">'+escapeHtml(x.name)+'</span><span style="cursor:pointer" onclick="event.stopPropagation();openSetupFolder(\''+x.id+'\',\''+escapeAttr(x.name)+'\')">▶</span></div>';});
+    c.innerHTML=h+'</div>';
+  }catch(e){c.innerHTML='<p class="hint">読み込めませんでした</p>';}
+}
+function selectSetupFolder(el){document.querySelectorAll('.folder-item-setup').forEach(function(x){x.classList.remove('selected')});el.classList.add('selected');setupFolderId=el.getAttribute('data-id');setupFolderName=el.getAttribute('data-name');updateSetupBtn();}
+function openSetupFolder(id,name){setupFolderPath.push({id:id,name:name});setupFolderId=id;setupFolderName=name;loadSetupFolders(id);updateSetupBtn();}
+function navigateSetupTo(i){setupFolderPath=setupFolderPath.slice(0,i+1);var t=setupFolderPath[i];setupFolderId=t.id;setupFolderName=t.name;loadSetupFolders(t.id);updateSetupBtn();}
+function updateSetupBreadcrumb(){var el=document.getElementById('setup-breadcrumb'),h='';setupFolderPath.forEach(function(p,i){if(i>0)h+=' / ';if(i<setupFolderPath.length-1)h+='<a onclick="navigateSetupTo('+i+')" style="cursor:pointer">'+escapeHtml(p.name)+'</a>';else h+='<strong>'+escapeHtml(p.name)+'</strong>';});el.innerHTML=h;}
+function updateSetupBtn(){var b=document.getElementById('setup-confirm-btn');b.disabled=!setupFolderId;b.textContent=setupFolderName?'「'+setupFolderName+'」に決定':'選択してください';}
+
+async function confirmSetup(){
+  var b=document.getElementById('setup-confirm-btn');b.disabled=true;b.textContent='設定中…';
+  try{
+    var ssBody={properties:{title:'Choreia パイプライン - '+currentUser.domain},sheets:SHEET_DEFS.map(function(s){return {properties:{title:s.title,gridProperties:{frozenRowCount:1}}};})};
+    var ss=await apiFetch('https://sheets.googleapis.com/v4/spreadsheets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ssBody)});
+    var ssId=ss.spreadsheetId;
+    var fileInfo=await apiFetch('https://www.googleapis.com/drive/v3/files/'+ssId+'?fields=parents&supportsAllDrives=true');
+    await authFetch('https://www.googleapis.com/drive/v3/files/'+ssId+'?addParents='+setupFolderId+'&removeParents='+(fileInfo.parents||[]).join(',')+'&supportsAllDrives=true',{method:'PATCH',headers:{'Content-Type':'application/json'},body:'{}'});
+    var headerData=SHEET_DEFS.map(function(s){return {range:s.title+'!A1',values:[s.headers]};});
+    await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+ssId+'/values:batchUpdate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valueInputOption:'RAW',data:headerData})});
+    var cfg={domain:currentUser.domain,admin:currentUser.email,admins:[currentUser.email],adminName:currentUser.name,folderId:setupFolderId,folderName:setupFolderName,driveId:setupDriveId,driveName:setupDriveName,spreadsheetId:ssId,createdAt:new Date().toISOString()};
+    var m=JSON.stringify({name:CONFIG_FILENAME,parents:[setupFolderId],mimeType:'application/json'});
+    var f=new FormData();f.append('metadata',new Blob([m],{type:'application/json'}));f.append('file',new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}));
+    var r=await authFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',{method:'POST',body:f});
+    if(!r.ok)throw new Error('config save failed');
+    var fl=await r.json();
+    orgConfig=cfg;orgConfig.configFileId=fl.id;saveCachedConfig();
+    showToast('セットアップ完了！');
+    await loadAllData();showMainView();
+  }catch(e){showToast('セットアップに失敗しました: '+e.message);b.disabled=false;updateSetupBtn();console.error(e);}
+}
+
+// ==================== Sheets I/O ====================
+function getSheetId(){return orgConfig?orgConfig.spreadsheetId:'';}
+function parseRows(rows,fields){return (rows||[]).map(function(row){var o={};fields.forEach(function(f,i){o[f]=row[i]||'';});return o;}).filter(function(o){return String(o[fields[0]]||'').trim();});}
+function toRow(obj,fields){return fields.map(function(f){return obj[f]===undefined?'':String(obj[f]);});}
+function colLetter(n){var s='';while(n>0){var m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;}
+async function loadAllData(){
+  var id=getSheetId();if(!id)return;
+  var ranges=SHEET_DEFS.map(function(s){return 'ranges='+encodeURIComponent(s.title+'!A2:'+colLetter(s.fields.length)+'5000');}).join('&');
+  var data=await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values:batchGet?'+ranges);
+  var vr=data.valueRanges||[];
+  products=parseRows(vr[0]&&vr[0].values,PRODUCT_FIELDS);
+  deals=parseRows(vr[1]&&vr[1].values,DEAL_FIELDS);
+  logs=parseRows(vr[2]&&vr[2].values,LOG_FIELDS);
+}
+async function appendRow(sheet,obj,fields){
+  await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+getSheetId()+'/values/'+encodeURIComponent(sheet+'!A:ZZ')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values:[toRow(obj,fields)]})});
+}
+async function updateRowByIndex(sheet,rowIndex,obj,fields){
+  var range=sheet+'!A'+(rowIndex+2)+':'+colLetter(fields.length)+(rowIndex+2);
+  await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+getSheetId()+'/values/'+encodeURIComponent(range)+'?valueInputOption=RAW',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({values:[toRow(obj,fields)]})});
+}
+async function saveEntity(sheet,arr,obj,fields){
+  var i=idxOf(arr,obj.id);
+  obj.updatedAt=nowStr();
+  if(i===-1){arr.push(obj);await appendRow(sheet,obj,fields);}
+  else{arr[i]=obj;await updateRowByIndex(sheet,i,obj,fields);}
+}
+
+
+// ==================== Modal helpers ====================
+function openModal(html){document.getElementById('modal').innerHTML=html;document.getElementById('modal-bg').classList.add('on');}
+function closeModal(){document.getElementById('modal-bg').classList.remove('on');}
+function fv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+function inp(id,label,val,type,full){return '<label class="f'+(full?' full':'')+'" style="'+(full?'grid-column:1/-1':'')+'">'+label+'<input id="'+id+'" type="'+(type||'text')+'" value="'+escapeAttr(val||'')+'"></label>';}
+function sel(id,label,val,opts,full){var h='<label class="f" style="'+(full?'grid-column:1/-1':'')+'">'+label+'<select id="'+id+'">';opts.forEach(function(o){h+='<option'+(o===val?' selected':'')+'>'+escapeHtml(o)+'</option>';});return h+'</select></label>';}
+function ta(id,label,val){return '<label class="f" style="grid-column:1/-1">'+label+'<textarea id="'+id+'">'+escapeHtml(val||'')+'</textarea></label>';}
+
+</script>
+</body>
+</html>
