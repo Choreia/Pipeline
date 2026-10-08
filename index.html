@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Choreia パイプライン</title>
+<title>Choreia システム</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@700;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -129,20 +129,34 @@ table.pipe td.nw{white-space:nowrap}
 .dcard.add{color:var(--muted);border-style:dashed;justify-content:center;align-items:center;min-width:80px}
 .fchip{display:inline-block;font-size:.76rem;font-weight:700;border:1px solid var(--line2);border-radius:999px;padding:1px 10px;margin:0 2px;cursor:pointer;color:var(--sub);background:var(--card)}
 .fchip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+/* hearing */
+.prog{height:8px;background:var(--panel2);border-radius:999px;overflow:hidden;min-width:80px}
+.prog i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .2s}
+.prog.full i{background:var(--ok)}
+.hq{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:10px;background:var(--paper)}
+.hq.done{border-color:var(--ok);background:var(--ok-soft)}
+.hq b{display:block;font-size:.86rem}
+.hq .ex{font-size:.74rem;color:var(--muted);margin:2px 0 6px}
+.hq textarea{width:100%;font-family:inherit;font-size:.9rem;padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--card);color:var(--ink);min-height:54px;resize:vertical}
+.hhead{display:flex;align-items:center;gap:12px;margin:8px 0 14px;flex-wrap:wrap}
+.hhead .prog{flex:1}
+.hhead .pct{font-family:"IBM Plex Mono",monospace;font-size:.9rem;font-weight:500;min-width:48px;text-align:right}
+.modal.wide{max-width:820px}
+.dcard .hs{font-size:.68rem;color:var(--muted)}
 </style>
 </head>
 <body>
 
 <header class="app">
-  <span class="brand">Choreia<small>パイプライン</small></span>
+  <span class="brand">Choreia<small>システム</small></span>
   <span class="spacer"></span>
   <div id="auth-out"><button class="btn" onclick="handleSignIn()">Googleでログイン</button></div>
   <div id="user-area" style="display:none"><img id="user-avatar" alt=""><span id="user-name"></span><button class="btn ghost small" onclick="reloadData()">↻ 最新にする</button><button class="btn ghost small" id="btn-settings" style="display:none" onclick="openSettings()">⚙ 設定</button><button class="btn ghost small" onclick="handleSignOut()">ログアウト</button></div>
 </header>
 
 <div id="view-welcome" class="center">
-  <h1>Choreia パイプライン</h1>
-  <p>プロダクトごとに、どこへ提案していて、いまどの段階かを一枚で。<br>データは自社のGoogleスプレッドシートに保存されます。</p>
+  <h1>Choreia システム</h1>
+  <p>システム販売の案件を一枚で。どこへ提案していて今どの段階か、営業が聞き取った要件はどこまで埋まったか。<br>データは自社のGoogleスプレッドシートに保存されます。</p>
   <button class="btn" onclick="handleSignIn()">Googleでログイン</button>
   <p class="hint">組織のGoogleアカウント（@m2-labo.jp 等）でログインしてください。</p>
 </div>
@@ -169,6 +183,7 @@ table.pipe td.nw{white-space:nowrap}
   <button class="on" data-v="pipe" onclick="switchTab('pipe')">パイプライン</button>
   <button data-v="phase" onclick="switchTab('phase')">フェーズ集計</button>
   <button data-v="products" onclick="switchTab('products')">プロダクト</button>
+  <button data-v="hearing" onclick="switchTab('hearing')">ヒアリング</button>
   <button data-v="logs" onclick="switchTab('logs')">訪問記録</button>
 </nav>
 <main>
@@ -193,6 +208,15 @@ table.pipe td.nw{white-space:nowrap}
     <div class="bar"><span class="spacer"></span><button class="btn" onclick="openProductForm()">＋ プロダクト</button></div>
     <div class="tbox" id="t-products"></div>
   </section>
+  <section class="view" id="v-hearing">
+    <h2>ヒアリング</h2>
+    <p class="viewdesc">営業がお客様から聞き取る項目です。案件ごとに1枚。全部埋まったら「開発へ渡す」を押すと、開発側が要件として受け取ります。途中でも保存できます。</p>
+    <div class="kpis" id="hear-kpis"></div>
+    <div class="bar"><input type="search" id="q-hear" placeholder="提案先・プロダクトで検索" oninput="renderHearings()"><span class="spacer"></span><button class="btn" onclick="openHearingPicker()">＋ ヒアリング</button></div>
+    <div class="tbox" id="t-hearing"></div>
+    <h3 style="font-size:.9rem;margin-top:20px">聞く項目</h3>
+    <div id="hear-guide"></div>
+  </section>
   <section class="view" id="v-logs">
     <h2>訪問記録</h2>
     <p class="viewdesc">訪問のたびに手でメモを書くのではなく、その場で録ったボイスメモや Google Meet の議事録のリンクを残します。</p>
@@ -202,7 +226,7 @@ table.pipe td.nw{white-space:nowrap}
 </main>
 </div>
 
-<footer>Choreia パイプライン ─ データは自社スプレッドシートに保存。M2Labo システム販売</footer>
+<footer>Choreia システム ─ データは自社スプレッドシートに保存。M2Labo システム販売</footer>
 
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
 <div class="toast" id="toast"></div>
@@ -223,10 +247,32 @@ var BLOCKED_DOMAINS=['gmail.com','googlemail.com','yahoo.co.jp','yahoo.com','hot
 var PRODUCT_FIELDS=['id','name','summary','kind','seller','devOwner','initialFee','monthlyFee','feeUnit','nextAction','due','memo','order','createdAt','updatedAt'];
 var DEAL_FIELDS=['id','productId','customer','phase','amountNote','owner','nextAction','due','memo','history','createdAt','updatedAt'];
 var LOG_FIELDS=['id','date','productId','dealId','who','summary','link','createdAt','updatedAt'];
+// ヒアリング: 営業がシステム要件を聞き出すための固定の質問票(10/5 MTG 決定④)。
+// 1案件につき1枚。全部埋まったら「開発へ渡す」。開発側はこれを要件のたたき台にする。
+var HEARING_QUESTIONS=[
+  {k:'q01',t:'誰が使うか',ex:'使う人の部署・役割・人数。例: 営業部3名と事務1名。現場のパートさんも見る'},
+  {k:'q02',t:'今はどうやっているか',ex:'いまの手順と道具。例: FAXで受けてExcelに手入力、月末に紙で回覧'},
+  {k:'q03',t:'困っていること',ex:'何に時間がかかる・何を間違える・誰が困る。例: 転記に毎日2時間、月に数件の入力ミス'},
+  {k:'q04',t:'入ってくるもの（入力）',ex:'紙・Excel・メール・他システムなど。例: 取引先からのFAX注文書、基幹からのCSV'},
+  {k:'q05',t:'出したいもの（出力）',ex:'帳票・画面・通知・CSVなど。例: 日次の集計表、LINEで通知、会計ソフトへ取り込めるCSV'},
+  {k:'q06',t:'件数と頻度',ex:'1日・1か月に何件、何人が触るか。例: 1日50件、月1回の締め処理'},
+  {k:'q07',t:'つなぐ先・既存システム',ex:'会計・基幹・Googleスプレッドシート・Microsoft 365など。例: 弥生会計、Teams'},
+  {k:'q08',t:'使う環境',ex:'PC・スマホ・タブレット、社内LAN・外出先、GoogleかMicrosoftか'},
+  {k:'q09',t:'いつまでに',ex:'期限とその理由。例: 11月末。担当者が退職するため'},
+  {k:'q10',t:'予算感',ex:'初期費用・月額の目安。相見積の有無。例: 初期100万まで、月5万以内'},
+  {k:'q11',t:'決める人・窓口',ex:'決裁者と、日々やりとりする担当者。例: 社長が決裁、窓口は総務の〇〇さん'},
+  {k:'q12',t:'できたら成功と言える条件',ex:'何がどうなれば導入成功か。例: 転記がゼロになる、月末の締めが1日で終わる'},
+  {k:'q13',t:'守らないといけないこと',ex:'セキュリティ・社内ルール・既存契約・データの置き場所。例: 顧客データは国内に置く'},
+  {k:'q14',t:'資料・リンク',ex:'現状のExcel、帳票見本、画面写真などのDriveリンク'}
+];
+var HEARING_STATUSES=['入力中','開発へ渡した','開発が確認した'];
+var HEARING_STATUS_PILL={'入力中':'p-warn','開発へ渡した':'p-acc','開発が確認した':'p-ok'};
+var HEARING_FIELDS=['id','dealId','productId','customer','status','filledBy'].concat(HEARING_QUESTIONS.map(function(q){return q.k;})).concat(['pct','memo','createdAt','updatedAt']);
 var SHEET_DEFS=[
   {title:'プロダクト',fields:PRODUCT_FIELDS,headers:['ID','プロダクト名','内容（概要）','種類','誰が売るか','開発担当','初期費用（円）','月額（円）','月額の単位','次にやること','期限','メモ','並び順','登録日','更新日']},
   {title:'案件',fields:DEAL_FIELDS,headers:['ID','プロダクトID','提案先','フェーズ','金額メモ','営業担当','次にやること','期限','メモ','履歴','登録日','更新日']},
-  {title:'訪問記録',fields:LOG_FIELDS,headers:['ID','日付','プロダクトID','案件ID','記録した人','内容（要約）','録音・議事録のリンク','登録日','更新日']}
+  {title:'訪問記録',fields:LOG_FIELDS,headers:['ID','日付','プロダクトID','案件ID','記録した人','内容（要約）','録音・議事録のリンク','登録日','更新日']},
+  {title:'ヒアリング',fields:HEARING_FIELDS,headers:['ID','案件ID','プロダクトID','提案先','状態','聞いた人'].concat(HEARING_QUESTIONS.map(function(q){return q.t;})).concat(['埋まり率(%)','メモ','登録日','更新日'])}
 ];
 var PHASES=['構想','提案予定','提案中','試験導入','受注','運用中','失注'];
 var PHASE_DESC={'構想':'アイデアの段階。提案先はまだ無い','提案予定':'提案先は決まっていて、まだ話していない','提案中':'提案した。返事待ち・条件調整中','試験導入':'無料お試し・実証で使ってもらっている','受注':'契約済み・発注をもらった','運用中':'本番で使われ、保守・月額をもらっている','失注':'断られた・採択されなかった'};
@@ -239,7 +285,7 @@ var STALE_DAYS=30;
 var tokenClient=null,accessToken=null;
 var currentUser={email:'',name:'',domain:'',photo:''};
 var orgConfig=null;
-var products=[],deals=[],logs=[];
+var products=[],deals=[],logs=[],hearings=[];
 var setupDriveId='',setupDriveName='',setupFolderId='',setupFolderName='',setupFolderPath=[];
 var filterSeller='',filterKind='',hideLost=false;
 
@@ -289,7 +335,7 @@ async function removeRole(key,email){
 // ==================== Views ====================
 function showView(name){['welcome','loading','setup','main'].forEach(function(v){var el=document.getElementById('view-'+v);if(el)el.style.display=(v===name)?'':'none';});}
 var currentTab='pipe';
-var TABS=['pipe','phase','products','logs'];
+var TABS=['pipe','phase','products','hearing','logs'];
 function switchTab(tab){
   currentTab=tab;
   document.querySelectorAll('nav.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.v===tab);});
@@ -297,6 +343,7 @@ function switchTab(tab){
   if(tab==='pipe')renderPipeline();
   if(tab==='phase')renderPhase();
   if(tab==='products')renderProducts();
+  if(tab==='hearing')renderHearings();
   if(tab==='logs')renderLogs();
 }
 function showMainView(){
@@ -341,7 +388,7 @@ function renderPipeline(){
        '<td class="nw">'+escapeHtml(p.kind||'')+'</td><td class="nw">'+escapeHtml(p.seller||'')+'</td><td class="num nw" style="font-size:.78rem">'+price.join('<br>')+'</td><td><div class="deals">';
     ds.forEach(function(d){
       var n=daysSince(d.updatedAt),st=(d.phase!=='失注'&&d.phase!=='運用中'&&n!==null&&n>=STALE_DAYS);
-      h+='<div class="dcard'+(st?' stale':'')+'" onclick="openDealForm(\''+d.id+'\')" title="'+escapeAttr((d.nextAction||'')+(st?'（'+n+'日更新なし）':''))+'"><b>'+escapeHtml(d.customer)+'</b>'+phasePill(d.phase)+'</div>';
+      h+='<div class="dcard'+(st?' stale':'')+'" onclick="openDealForm(\''+d.id+'\')" title="'+escapeAttr((d.nextAction||'')+(st?'（'+n+'日更新なし）':''))+'"><b>'+escapeHtml(d.customer)+'</b>'+phasePill(d.phase)+hearingBadge(d.id)+'</div>';
     });
     h+='<div class="dcard add" onclick="openDealForm(\'\',\''+p.id+'\')">＋ 案件</div></div></td></tr>';
   });
@@ -404,7 +451,7 @@ function openDealForm(id,productId){
     inp('d-next','次にやること',d.nextAction,'text',true)+inp('d-due','期限',d.due,'date')+ta('d-memo','メモ',d.memo)+
     '</div>'+(hist?'<h3 style="font-size:.85rem;margin-top:14px">フェーズの履歴</h3><ul class="timeline">'+hist+'</ul>':'')+
     (relLogs.length?'<h3 style="font-size:.85rem;margin-top:14px">訪問記録</h3>'+relLogs.map(function(l){return '<div class="kv"><b>'+escapeHtml(l.date)+' '+escapeHtml(l.who)+'</b>'+escapeHtml(l.summary)+'</div>';}).join(''):'')+
-    '<div class="actions">'+(id?'<button class="btn ghost" onclick="openLogForm(\'\',\''+id+'\')">＋ 訪問記録</button>':'')+'<button class="btn ghost" onclick="closeModal()">閉じる</button><button class="btn" onclick="saveDeal(\''+(id||'')+'\')">保存</button></div>');
+    '<div class="actions">'+(id?'<button class="btn ghost" onclick="openHearingForDeal(\''+id+'\')">📝 ヒアリング'+(hearingOf(id)?'（'+hearingPct(hearingOf(id))+'%）':'')+'</button><button class="btn ghost" onclick="openLogForm(\'\',\''+id+'\')">＋ 訪問記録</button>':'')+'<button class="btn ghost" onclick="closeModal()">閉じる</button><button class="btn" onclick="saveDeal(\''+(id||'')+'\')">保存</button></div>');
 }
 async function saveDeal(id){
   var customer=fv('d-customer');if(!customer){showToast('提案先を入れてください');return;}
@@ -442,6 +489,115 @@ async function saveLog(id){
   l.date=fv('l-date');l.who=fv('l-who');l.productId=fv('l-product');l.dealId=fv('l-deal');l.summary=fv('l-summary');l.link=fv('l-link');
   if(!l.summary&&!l.link){showToast('内容かリンクを入れてください');return;}
   try{await saveEntity('訪問記録',logs,l,LOG_FIELDS);closeModal();showToast('保存しました');switchTab(currentTab);}catch(e){showToast('保存に失敗しました: '+e.message);}
+}
+
+// ==================== ヒアリング（営業向け要件聞き取り票） ====================
+// 営業が画面の項目を順に聞いて埋める。100%埋まったら「開発へ渡す」。
+// 開発側(安河内)は「AI用にコピー」で Markdown を取り出し、要件定義のたたき台にする(10/5 MTG)。
+function hearingOf(dealId){for(var i=0;i<hearings.length;i++)if(hearings[i].dealId===dealId)return hearings[i];return null;}
+function hearingPct(h){var n=0;HEARING_QUESTIONS.forEach(function(q){if(String(h[q.k]||'').trim())n++;});return Math.round(n*100/HEARING_QUESTIONS.length);}
+function hearingBadge(dealId){var h=hearingOf(dealId);if(!h)return '';var p=hearingPct(h);return '<span class="hs">📝 '+(h.status==='入力中'?p+'%':escapeHtml(h.status))+'</span>';}
+function hearingStatusPill(s){return '<span class="pill '+(HEARING_STATUS_PILL[s]||'p-mut')+'">'+escapeHtml(s||'入力中')+'</span>';}
+function renderHearings(){
+  var inProg=hearings.filter(function(h){return h.status==='入力中';});
+  var handed=hearings.filter(function(h){return h.status==='開発へ渡した';});
+  var full=hearings.filter(function(h){return hearingPct(h)===100;});
+  document.getElementById('hear-kpis').innerHTML=
+    '<div class="kpi"><div class="n">'+hearings.length+'</div><div class="l">ヒアリング票</div></div>'+
+    '<div class="kpi warm"><div class="n">'+inProg.length+'</div><div class="l">入力中</div></div>'+
+    '<div class="kpi hot"><div class="n">'+handed.length+'</div><div class="l">開発へ渡した（確認待ち）</div></div>'+
+    '<div class="kpi"><div class="n">'+full.length+'</div><div class="l">全部埋まった</div></div>';
+  var q=(document.getElementById('q-hear').value||'').trim().toLowerCase();
+  var list=hearings.slice().sort(function(a,b){return (b.updatedAt||'').localeCompare(a.updatedAt||'');}).filter(function(h){
+    if(!q)return true;return (h.customer+' '+productName(h.productId)).toLowerCase().indexOf(q)!==-1;});
+  if(!list.length){document.getElementById('t-hearing').innerHTML='<p class="hint" style="padding:16px">まだヒアリング票がありません。「＋ ヒアリング」で案件を選ぶか、パイプラインの案件を開いて「📝 ヒアリング」を押してください。</p>';}
+  else{
+    var h='<table><thead><tr><th>提案先</th><th>プロダクト</th><th style="min-width:160px">埋まり具合</th><th>状態</th><th>聞いた人</th><th>更新</th></tr></thead><tbody>';
+    list.forEach(function(x){var p=hearingPct(x),d=byId(deals,x.dealId);
+      h+='<tr onclick="openHearingForm(\''+x.id+'\')"><td><b>'+escapeHtml(x.customer)+'</b>'+(d?'<span class="sub">'+phasePill(d.phase)+'</span>':'')+'</td><td>'+escapeHtml(productName(x.productId))+'</td>'+
+         '<td><div style="display:flex;align-items:center;gap:8px"><div class="prog'+(p===100?' full':'')+'" style="flex:1"><i style="width:'+p+'%"></i></div><span class="num" style="font-size:.78rem">'+p+'%</span></div></td>'+
+         '<td>'+hearingStatusPill(x.status)+'</td><td>'+escapeHtml(x.filledBy)+'</td><td class="num" style="font-size:.76rem">'+escapeHtml((x.updatedAt||'').slice(0,10))+'</td></tr>';});
+    document.getElementById('t-hearing').innerHTML=h+'</tbody></table>';
+  }
+  var g='';HEARING_QUESTIONS.forEach(function(x,i){g+='<div class="kv"><b>'+(i+1)+'. '+escapeHtml(x.t)+'</b><span class="hint">'+escapeHtml(x.ex)+'</span></div>';});
+  document.getElementById('hear-guide').innerHTML=g;
+}
+function openHearingPicker(){
+  var cand=deals.filter(function(d){return d.phase!=='失注'&&!hearingOf(d.id);});
+  if(!cand.length){showToast('ヒアリング票のない案件がありません。先にパイプラインで案件を作ってください');return;}
+  var opts=cand.map(function(d){return '<option value="'+d.id+'">'+escapeHtml(productName(d.productId)+' / '+d.customer)+'</option>';}).join('');
+  openModal('<h3>ヒアリングを始める</h3><p class="hint">どの案件のヒアリングですか。案件がまだ無いときは、先にパイプラインで「＋ 案件」を押してください。</p>'+
+    '<label class="f">案件<select id="hp-deal">'+opts+'</select></label>'+
+    '<div class="actions"><button class="btn ghost" onclick="closeModal()">閉じる</button><button class="btn" onclick="openHearingForDeal(fv(\'hp-deal\'))">始める</button></div>');
+}
+function openHearingForDeal(dealId){
+  var h=hearingOf(dealId);
+  if(h){openHearingForm(h.id);return;}
+  var d=byId(deals,dealId);if(!d){showToast('案件が見つかりません');return;}
+  openHearingForm('',d);
+}
+function openHearingForm(id,deal){
+  if(!id)_newHearingDeal=deal;
+  var h=id?byId(hearings,id):{dealId:deal.id,productId:deal.productId,customer:deal.customer,status:'入力中',filledBy:currentUser.name};
+  var d=byId(deals,h.dealId);
+  var body='';HEARING_QUESTIONS.forEach(function(q,i){var v=h[q.k]||'';
+    body+='<div class="hq'+(v.trim()?' done':'')+'" id="hq-'+q.k+'"><b>'+(i+1)+'. '+escapeHtml(q.t)+'</b><div class="ex">'+escapeHtml(q.ex)+'</div><textarea id="h-'+q.k+'" oninput="hearingLive()">'+escapeHtml(v)+'</textarea></div>';});
+  openModal('<h3>ヒアリング：'+escapeHtml(h.customer)+' <span class="hint" style="font-weight:400">'+escapeHtml(productName(h.productId))+(d?' ・ ':'')+(d?phasePill(d.phase):'')+'</span></h3>'+
+    '<div class="hhead"><div class="prog" id="h-prog"><i style="width:0"></i></div><span class="pct" id="h-pct">0%</span>'+hearingStatusPill(h.status)+'</div>'+
+    '<div class="fgrid" style="margin-bottom:12px">'+inp('h-filledBy','聞いた人',h.filledBy)+inp('h-customer','提案先',h.customer)+'</div>'+
+    body+
+    ta('h-memo','メモ（聞いた順や雰囲気など、項目に入らないこと）',h.memo)+
+    '<div class="actions" style="justify-content:space-between;flex-wrap:wrap"><div>'+(id?'<button class="btn ghost" onclick="copyHearingMd(\''+id+'\')">AI用にコピー</button>':'')+'</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost" onclick="closeModal()">閉じる</button>'+
+    '<button class="btn ghost" onclick="saveHearing(\''+(id||'')+'\',\'\')">途中保存</button>'+
+    (h.status==='入力中'?'<button class="btn" id="h-hand" onclick="saveHearing(\''+(id||'')+'\',\'開発へ渡した\')">開発へ渡す</button>':'')+
+    (h.status==='開発へ渡した'?'<button class="btn" onclick="saveHearing(\''+(id||'')+'\',\'開発が確認した\')">開発が確認した</button>':'')+
+    (h.status==='開発が確認した'?'<button class="btn ghost" onclick="saveHearing(\''+(id||'')+'\',\'入力中\')">入力中に戻す</button>':'')+
+    '</div></div>');
+  document.getElementById('modal').classList.add('wide');
+  hearingLive();
+}
+function hearingLive(){
+  var n=0;HEARING_QUESTIONS.forEach(function(q){var v=fv('h-'+q.k);var el=document.getElementById('hq-'+q.k);if(el)el.classList.toggle('done',!!v);if(v)n++;});
+  var p=Math.round(n*100/HEARING_QUESTIONS.length);
+  var pr=document.getElementById('h-prog');if(pr){pr.classList.toggle('full',p===100);pr.querySelector('i').style.width=p+'%';}
+  var pc=document.getElementById('h-pct');if(pc)pc.textContent=p+'%';
+  var hb=document.getElementById('h-hand');if(hb)hb.title=(p<100?'全部埋まっていなくても渡せます（'+(HEARING_QUESTIONS.length-n)+'項目が空）':'');
+}
+async function saveHearing(id,newStatus){
+  var h=id?Object.assign({},byId(hearings,id)):null;
+  if(!h){h={id:nextId('HEAR',hearings),createdAt:nowStr(),status:'入力中'};
+    // 新規は openHearingForm の deal から
+    h.dealId=_newHearingDeal.id;h.productId=_newHearingDeal.productId;}
+  h.customer=fv('h-customer')||h.customer;h.filledBy=fv('h-filledBy');h.memo=fv('h-memo');
+  HEARING_QUESTIONS.forEach(function(q){h[q.k]=fv('h-'+q.k);});
+  h.pct=String(hearingPct(h));
+  if(newStatus){
+    if(newStatus==='開発へ渡した'&&h.pct!=='100'&&!confirm('まだ'+(HEARING_QUESTIONS.length-Math.round(hearingPct(h)*HEARING_QUESTIONS.length/100))+'項目が空です。このまま開発へ渡しますか。'))return;
+    h.status=newStatus;
+  }
+  try{await saveEntity('ヒアリング',hearings,h,HEARING_FIELDS);
+    var d=byId(deals,h.dealId);
+    if(newStatus==='開発へ渡した'&&d){pushHistory(d,'ヒアリングを開発へ渡した（'+currentUser.name+'）');await saveEntity('案件',deals,d,DEAL_FIELDS);}
+    closeModal();document.getElementById('modal').classList.remove('wide');showToast(newStatus?newStatus+'にしました':'保存しました');switchTab(currentTab);
+  }catch(e){showToast('保存に失敗しました: '+e.message);}
+}
+var _newHearingDeal=null;
+function hearingMarkdown(h){
+  var d=byId(deals,h.dealId),p=byId(products,h.productId);
+  var m='# ヒアリング: '+h.customer+'\n\n';
+  m+='- プロダクト: '+(p?p.name:'')+(p&&p.summary?'（'+p.summary+'）':'')+'\n';
+  if(d)m+='- フェーズ: '+d.phase+(d.owner?' / 営業担当: '+d.owner:'')+(d.amountNote?' / 金額メモ: '+d.amountNote:'')+'\n';
+  m+='- 聞いた人: '+(h.filledBy||'')+' / 状態: '+(h.status||'')+' / 埋まり率: '+hearingPct(h)+'%\n- 更新: '+(h.updatedAt||'')+'\n\n';
+  HEARING_QUESTIONS.forEach(function(q,i){m+='## '+(i+1)+'. '+q.t+'\n'+(String(h[q.k]||'').trim()||'（未記入）')+'\n\n';});
+  if(h.memo)m+='## メモ\n'+h.memo+'\n';
+  return m;
+}
+async function copyHearingMd(id){
+  var h=byId(hearings,id);if(!h)return;
+  var m=hearingMarkdown(h);
+  try{await navigator.clipboard.writeText(m);showToast('Markdownをコピーしました。AIに貼り付けて要件定義のたたき台にできます');}
+  catch(e){openModal('<h3>AI用テキスト</h3><textarea style="width:100%;min-height:360px;font-family:inherit;font-size:.86rem">'+escapeHtml(m)+'</textarea><div class="actions"><button class="btn" onclick="closeModal()">閉じる</button></div>');}
 }
 
 // ==================== 初期データ（10/5 MTG・プロダクト一覧 9/14） ====================
@@ -559,7 +715,7 @@ function handleSignIn(){if(!tokenClient){showToast('準備中です。少し待�
 function handleSignOut(){
   if(accessToken)google.accounts.oauth2.revoke(accessToken);
   accessToken=null;localStorage.removeItem(TOKEN_KEY);localStorage.removeItem(CONFIG_CACHE_KEY);
-  orgConfig=null;products=[];deals=[];logs=[];
+  orgConfig=null;products=[];deals=[];logs=[];hearings=[];
   document.getElementById('auth-out').style.display='';
   document.getElementById('user-area').style.display='none';
   showView('welcome');
@@ -646,7 +802,7 @@ function updateSetupBtn(){var b=document.getElementById('setup-confirm-btn');b.d
 async function confirmSetup(){
   var b=document.getElementById('setup-confirm-btn');b.disabled=true;b.textContent='設定中…';
   try{
-    var ssBody={properties:{title:'Choreia パイプライン - '+currentUser.domain},sheets:SHEET_DEFS.map(function(s){return {properties:{title:s.title,gridProperties:{frozenRowCount:1}}};})};
+    var ssBody={properties:{title:'Choreia システム - '+currentUser.domain},sheets:SHEET_DEFS.map(function(s){return {properties:{title:s.title,gridProperties:{frozenRowCount:1}}};})};
     var ss=await apiFetch('https://sheets.googleapis.com/v4/spreadsheets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ssBody)});
     var ssId=ss.spreadsheetId;
     var fileInfo=await apiFetch('https://www.googleapis.com/drive/v3/files/'+ssId+'?fields=parents&supportsAllDrives=true');
@@ -670,14 +826,27 @@ function getSheetId(){return orgConfig?orgConfig.spreadsheetId:'';}
 function parseRows(rows,fields){return (rows||[]).map(function(row){var o={};fields.forEach(function(f,i){o[f]=row[i]||'';});return o;}).filter(function(o){return String(o[fields[0]]||'').trim();});}
 function toRow(obj,fields){return fields.map(function(f){return obj[f]===undefined?'':String(obj[f]);});}
 function colLetter(n){var s='';while(n>0){var m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;}
+async function ensureSheets(id){
+  // 後から増えたシート(ヒアリング等)が無ければ作る
+  try{
+    var meta=await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+id+'?fields=sheets.properties.title');
+    var have=(meta.sheets||[]).map(function(x){return x.properties.title;});
+    var missing=SHEET_DEFS.filter(function(s){return have.indexOf(s.title)===-1;});
+    if(!missing.length)return;
+    await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+id+':batchUpdate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requests:missing.map(function(s){return {addSheet:{properties:{title:s.title,gridProperties:{frozenRowCount:1}}}};})})});
+    await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values:batchUpdate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valueInputOption:'RAW',data:missing.map(function(s){return {range:s.title+'!A1',values:[s.headers]};})})});
+  }catch(e){console.error('ensureSheets',e);}
+}
 async function loadAllData(){
   var id=getSheetId();if(!id)return;
+  await ensureSheets(id);
   var ranges=SHEET_DEFS.map(function(s){return 'ranges='+encodeURIComponent(s.title+'!A2:'+colLetter(s.fields.length)+'5000');}).join('&');
   var data=await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values:batchGet?'+ranges);
   var vr=data.valueRanges||[];
   products=parseRows(vr[0]&&vr[0].values,PRODUCT_FIELDS);
   deals=parseRows(vr[1]&&vr[1].values,DEAL_FIELDS);
   logs=parseRows(vr[2]&&vr[2].values,LOG_FIELDS);
+  hearings=parseRows(vr[3]&&vr[3].values,HEARING_FIELDS);
 }
 async function appendRow(sheet,obj,fields){
   await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+getSheetId()+'/values/'+encodeURIComponent(sheet+'!A:ZZ')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values:[toRow(obj,fields)]})});
@@ -696,7 +865,7 @@ async function saveEntity(sheet,arr,obj,fields){
 
 // ==================== Modal helpers ====================
 function openModal(html){document.getElementById('modal').innerHTML=html;document.getElementById('modal-bg').classList.add('on');}
-function closeModal(){document.getElementById('modal-bg').classList.remove('on');}
+function closeModal(){document.getElementById('modal-bg').classList.remove('on');document.getElementById('modal').classList.remove('wide');}
 function fv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
 function inp(id,label,val,type,full){return '<label class="f'+(full?' full':'')+'" style="'+(full?'grid-column:1/-1':'')+'">'+label+'<input id="'+id+'" type="'+(type||'text')+'" value="'+escapeAttr(val||'')+'"></label>';}
 function sel(id,label,val,opts,full){var h='<label class="f" style="'+(full?'grid-column:1/-1':'')+'">'+label+'<select id="'+id+'">';opts.forEach(function(o){h+='<option'+(o===val?' selected':'')+'>'+escapeHtml(o)+'</option>';});return h+'</select></label>';}
