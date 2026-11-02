@@ -384,7 +384,7 @@ function renderPipeline(){
   list.forEach(function(p){
     var ds=dealsOf(p.id).filter(function(d){return !(hideLost&&d.phase==='失注');});
     var price=[];if(p.initialFee)price.push('初期 '+money(p.initialFee));if(p.monthlyFee)price.push('月 '+money(p.monthlyFee)+(p.feeUnit?' / '+escapeHtml(p.feeUnit):''));
-    h+='<tr><td onclick="openProductForm(\''+p.id+'\')"><b>'+escapeHtml(p.name)+'</b><span class="sub">'+escapeHtml(p.summary)+'</span>'+(p.nextAction?'<span class="sub">▶ '+escapeHtml(p.nextAction)+(p.due?'（'+escapeHtml(p.due)+'）':'')+'</span>':'')+'</td>'+
+    h+='<tr><td onclick="openProductForm(\''+p.id+'\')" style="cursor:pointer" title="クリックで編集"><b>'+escapeHtml(p.name)+'</b> <span class="sub" style="display:inline;color:var(--accent)">✎ 編集</span><span class="sub">'+escapeHtml(p.summary)+'</span>'+(p.nextAction?'<span class="sub">▶ '+escapeHtml(p.nextAction)+(p.due?'（'+escapeHtml(p.due)+'）':'')+'</span>':'')+'</td>'+
        '<td class="nw">'+escapeHtml(p.kind||'')+'</td><td class="nw">'+escapeHtml(p.seller||'')+'</td><td class="num nw" style="font-size:.78rem">'+price.join('<br>')+'</td><td><div class="deals">';
     ds.forEach(function(d){
       var n=daysSince(d.updatedAt),st=(d.phase!=='失注'&&d.phase!=='運用中'&&n!==null&&n>=STALE_DAYS);
@@ -415,7 +415,7 @@ function renderPhase(){
 function renderProducts(){
   var h='<table><thead><tr><th>#</th><th>プロダクト</th><th>種類</th><th>誰が売るか</th><th>開発担当</th><th>初期費用</th><th>月額</th><th>案件数</th><th>更新</th></tr></thead><tbody>';
   sortedProducts().forEach(function(p){
-    h+='<tr onclick="openProductForm(\''+p.id+'\')"><td class="num">'+escapeHtml(p.order||'')+'</td><td><b>'+escapeHtml(p.name)+'</b><span class="sub">'+escapeHtml(p.summary)+'</span></td><td>'+escapeHtml(p.kind)+'</td><td>'+escapeHtml(p.seller)+'</td><td>'+escapeHtml(p.devOwner)+'</td><td class="num">'+money(p.initialFee)+'</td><td class="num">'+money(p.monthlyFee)+(p.feeUnit?'<span class="sub">'+escapeHtml(p.feeUnit)+'</span>':'')+'</td><td class="num">'+dealsOf(p.id).length+'</td><td class="num" style="font-size:.76rem">'+escapeHtml((p.updatedAt||'').slice(0,10))+'</td></tr>';
+    h+='<tr onclick="openProductForm(\''+p.id+'\')" style="cursor:pointer" title="クリックで編集"><td class="num">'+escapeHtml(p.order||'')+'</td><td><b>'+escapeHtml(p.name)+'</b> <span class="sub" style="display:inline;color:var(--accent)">✎ 編集</span><span class="sub">'+escapeHtml(p.summary)+'</span></td><td>'+escapeHtml(p.kind)+'</td><td>'+escapeHtml(p.seller)+'</td><td>'+escapeHtml(p.devOwner)+'</td><td class="num">'+money(p.initialFee)+'</td><td class="num">'+money(p.monthlyFee)+(p.feeUnit?'<span class="sub">'+escapeHtml(p.feeUnit)+'</span>':'')+'</td><td class="num">'+dealsOf(p.id).length+'</td><td class="num" style="font-size:.76rem">'+escapeHtml((p.updatedAt||'').slice(0,10))+'</td></tr>';
   });
   document.getElementById('t-products').innerHTML=h+'</tbody></table>';
 }
