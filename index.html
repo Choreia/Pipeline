@@ -613,17 +613,28 @@ async function seedInitialData(){
   }catch(e){console.error(e);}
   if(!seed||!seed.length){showToast(SEED_FILENAME+' が見つかりません');return;}
   if(!confirm('初期データ（プロダクト'+seed.length+'件と案件）を入れます。よろしいですか。'))return;
-  var now=nowStr(),pRows=[],dRows=[],dn=0;
+  var now=nowStr(),pRows=[],dRows=[],lRows=[],dn=0,ln=0;
+  // 案件は ["提案先","フェーズ"] の配列形式と {customer,phase,owner,nextAction,due,memo} のオブジェクト形式の両方を受ける
   seed.forEach(function(s,i){
     var pid='PRD-'+String(i+1).padStart(5,'0');
     var p={id:pid,name:s.name,summary:s.summary||'',kind:s.kind||'',seller:s.seller||'',devOwner:s.devOwner||'',initialFee:s.initialFee||'',monthlyFee:s.monthlyFee||'',feeUnit:s.feeUnit||'',nextAction:s.nextAction||'',due:s.due||'',memo:s.memo||'',order:String(i+1),createdAt:now,updatedAt:now};
     products.push(p);pRows.push(toRow(p,PRODUCT_FIELDS));
-    (s.deals||[]).forEach(function(c){dn++;var d={id:'DEAL-'+String(dn).padStart(5,'0'),productId:pid,customer:c[0],phase:c[1],amountNote:'',owner:'',nextAction:'',due:'',memo:'',history:JSON.stringify([{t:now,e:c[1]+'で登録（初期データ）'}]),createdAt:now,updatedAt:now};deals.push(d);dRows.push(toRow(d,DEAL_FIELDS));});
+    var dealIds={};
+    (s.deals||[]).forEach(function(c){
+      var o=Array.isArray(c)?{customer:c[0],phase:c[1]}:(c||{});
+      dn++;var did='DEAL-'+String(dn).padStart(5,'0');dealIds[o.customer||'']=did;
+      var d={id:did,productId:pid,customer:o.customer||'',phase:o.phase||'',amountNote:o.amountNote||'',owner:o.owner||'',nextAction:o.nextAction||'',due:o.due||'',memo:o.memo||'',history:JSON.stringify([{t:now,e:(o.phase||'')+'で登録（初期データ）'}]),createdAt:now,updatedAt:now};
+      deals.push(d);dRows.push(toRow(d,DEAL_FIELDS));});
+    (s.visits||[]).forEach(function(v){
+      ln++;var l={id:'VIS-'+String(ln).padStart(5,'0'),date:v.date||'',productId:pid,dealId:dealIds[v.customer||'']||'',who:v.by||'',summary:v.summary||'',link:v.link||'',createdAt:now,updatedAt:now};
+      logs.push(l);lRows.push(toRow(l,LOG_FIELDS));});
   });
   try{
-    await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+getSheetId()+'/values:batchUpdate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valueInputOption:'RAW',data:[{range:'プロダクト!A2',values:pRows},{range:'案件!A2',values:dRows}]})});
+    var data=[{range:'プロダクト!A2',values:pRows},{range:'案件!A2',values:dRows}];
+    if(lRows.length)data.push({range:'訪問記録!A2',values:lRows});
+    await apiFetch('https://sheets.googleapis.com/v4/spreadsheets/'+getSheetId()+'/values:batchUpdate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valueInputOption:'RAW',data:data})});
     closeModal();showToast('初期データを入れました');switchTab('pipe');
-  }catch(e){products=[];deals=[];showToast('失敗しました: '+e.message);}
+  }catch(e){products=[];deals=[];logs=[];showToast('失敗しました: '+e.message);}
 }
 
 // ==================== Utility ====================
